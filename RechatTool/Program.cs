@@ -9,6 +9,8 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
+		public const string Version = "1.1.0.0";
+
 		private static int Main(string[] args) {
 			int iArg = 0;
 			string GetArg(bool optional = false) =>
@@ -50,6 +52,8 @@ namespace RechatTool {
 				return 0;
 			}
 			catch (InvalidArgumentException) {
+				Console.WriteLine($"RechatTool v{new Version(Version).ToDisplayString()}");
+				Console.WriteLine();
 				Console.WriteLine("Modes:");
 				Console.WriteLine("   -d videoid [path]");
 				Console.WriteLine("      Downloads chat replay for the specified videoid. If path is not");

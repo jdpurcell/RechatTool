@@ -14,5 +14,9 @@ namespace RechatTool {
 		public static long? TryParseInt64(this string s) {
 			return Int64.TryParse(s, out long n) ? n : (long?)null;
 		}
+
+		public static string ToDisplayString(this Version v) {
+			return $"{v.Major}.{v.Minor}.{v.Revision}";
+		}
 	}
 }
