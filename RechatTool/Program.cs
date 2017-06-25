@@ -36,6 +36,7 @@ namespace RechatTool {
 						paths = Directory.GetFiles(Path.GetDirectoryName(paths[0]), Path.GetFileName(paths[0]));
 					}
 					foreach (string p in paths) {
+						Console.WriteLine("Processing " + Path.GetFileName(p));
 						Rechat.ProcessFile(p);
 					}
 					Console.WriteLine("Done!");

@@ -76,7 +76,10 @@ namespace RechatTool {
 			if (File.Exists(pathOut) && !overwrite) {
 				throw new Exception("Output file already exists.");
 			}
-			File.WriteAllLines(pathOut, ParseMessages(pathIn).Select(ToReadableString), new UTF8Encoding(true));
+			IEnumerable<string> lines = ParseMessages(pathIn)
+				.Select(ToReadableString)
+				.Where(n => n != null);
+			File.WriteAllLines(pathOut, lines, new UTF8Encoding(true));
 		}
 
 		public static List<RechatMessage> ParseMessages(string path) {
@@ -88,7 +91,8 @@ namespace RechatTool {
 		}
 
 		private static string ToReadableString(RechatMessage m) {
-			return $"[{m.VideoOffset:hh\\:mm\\:ss\\.fff}] {m.UserDisplayName}: {m.MessageText ?? "<message deleted>"}";
+			if (m.IsRoomState) return null;
+			return $"[{m.VideoOffset:hh\\:mm\\:ss\\.fff}] {m.UserName}{(m.IsAction ? "" : ":")} {(m.IsDeleted ? "<message deleted>" : m.MessageText)}";
 		}
 
 		public class RechatMessage {
@@ -109,9 +113,20 @@ namespace RechatTool {
 
 			public TimeSpan VideoOffset => TimeSpan.FromMilliseconds(Attributes.VideoOffset);
 
-			public string MessageText => Attributes.Deleted ? null : Attributes.Message;
+			// State changes such as followers-only, subs-only, or slow mode
+			public bool IsRoomState => Attributes.Command?.Equals("ROOMSTATE", StringComparison.OrdinalIgnoreCase) == true;
 
-			public string UserDisplayName => Tags.DisplayName;
+			// Channel subscription notices
+			public bool IsUserNotice => Attributes.Command?.Equals("USERNOTICE", StringComparison.OrdinalIgnoreCase) == true;
+
+			// User said something with "/me"
+			public bool IsAction => Tags.Style?.Equals("action", StringComparison.OrdinalIgnoreCase) == true;
+
+			public bool IsDeleted => Attributes.Deleted;
+
+			public string MessageText => Attributes.Message;
+
+			public string UserName => Tags.DisplayName.NullIfEmpty() ?? Attributes.From;
 
 			public bool UserIsModerator => Tags.Mod;
 
@@ -123,6 +138,8 @@ namespace RechatTool {
 			}
 
 			private class JsonMessageAttributes {
+				[JsonProperty("command")]
+				public string Command { get; set; }
 				[JsonProperty("timestamp")]
 				public long Timestamp { get; set; }
 				[JsonProperty("video-offset")]
@@ -131,6 +148,8 @@ namespace RechatTool {
 				public bool Deleted { get; set; }
 				[JsonProperty("message")]
 				public string Message { get; set; }
+				[JsonProperty("from")]
+				public string From { get; set; }
 				[JsonProperty("tags")]
 				public JsonMessageTags Tags { get; set; }
 			}
@@ -142,6 +161,8 @@ namespace RechatTool {
 				public bool Mod { get; set; }
 				[JsonProperty("subscriber")]
 				public bool Subscriber { get; set; }
+				[JsonProperty("style")]
+				public string Style { get; set; }
 			}
 		}
 	}
