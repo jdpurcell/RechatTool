@@ -10,5 +10,9 @@ namespace RechatTool {
 		public static string NullIfEmpty(this string s) {
 			return String.IsNullOrEmpty(s) ? null : s;
 		}
+
+		public static long? TryParseInt64(this string s) {
+			return Int64.TryParse(s, out long n) ? n : (long?)null;
+		}
 	}
 }

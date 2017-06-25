@@ -5,6 +5,7 @@
 // --------------------------------------------------------------------------------
 using System;
 using System.IO;
+using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
@@ -16,10 +17,11 @@ namespace RechatTool {
 			try {
 				string mode = GetArg();
 				if (mode == "-d" || mode == "-D") {
-					if (!Int64.TryParse(GetArg(), out long videoId)) {
+					string videoIdStr = GetArg();
+					long videoId = videoIdStr.TryParseInt64() ??
+						TryParseVideoIdFromUrl(videoIdStr) ??
 						throw new InvalidArgumentException();
-					}
-					string path = GetArg(true) ?? $"{videoId}.json";;
+					string path = GetArg(true) ?? $"{videoId}.json";
 					void UpdateProgress(int downloaded, int total) {
 						Console.Write($"\rDownloaded {downloaded} of {total}");
 					}
@@ -64,6 +66,17 @@ namespace RechatTool {
 				Console.WriteLine("\rError: " + ex.Message);
 				return 1;
 			}
+		}
+
+		private static long? TryParseVideoIdFromUrl(string s) {
+			string[] hosts = { "twitch.tv", "www.twitch.tv" };
+			if (!s.StartsWith("http", StringComparison.OrdinalIgnoreCase)) {
+				s = "https://" + s;
+			}
+			if (!Uri.TryCreate(s, UriKind.Absolute, out Uri uri)) return null;
+			if (!hosts.Any(h => uri.Host.Equals(h, StringComparison.OrdinalIgnoreCase))) return null;
+			if (!uri.AbsolutePath.StartsWith("/videos/", StringComparison.Ordinal)) return null;
+			return uri.AbsolutePath.Substring(8).TryParseInt64();
 		}
 
 		private class InvalidArgumentException : Exception { }
