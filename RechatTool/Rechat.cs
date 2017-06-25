@@ -15,9 +15,9 @@ using System.Threading.Tasks;
 
 namespace RechatTool {
 	public static class Rechat {
-		public static void DownloadFile(long videoId, string path, bool overwrite, Action<int, int> progressCallback) {
+		public static void DownloadFile(long videoId, string path, bool overwrite = false, Action<int, int> progressCallback = null) {
 			const int timestampStep = 30;
-			const int threadCount = 6;
+			const int threadCount = 2; // A second thread helps quite a bit; after that the gains are minimal
 			if (File.Exists(path) && !overwrite) {
 				throw new Exception("Output file already exists.");
 			}
