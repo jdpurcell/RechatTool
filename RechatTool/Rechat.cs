@@ -11,7 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace RechatTool {
 	public static class Rechat {
@@ -29,24 +28,29 @@ namespace RechatTool {
 			}
 			long firstTimestamp = Int64.Parse(videoInfoSplit[4]);
 			long lastTimestamp = Int64.Parse(videoInfoSplit[6]);
-			int segmentCount = ((int)(lastTimestamp - firstTimestamp) / timestampStep) + 1;
+			int totalSegmentCount = ((int)(lastTimestamp - firstTimestamp) / timestampStep) + 1;
 			object syncObj = new object();
-			JArray[] segments = new JArray[segmentCount];
-			int downloadedSegmentCount = 0;
-			void DownloadSegment(int iSegment) {
+			JArray[] segments = new JArray[totalSegmentCount];
+			int startedSegmentCount = 0;
+			int finishedSegmentCount = 0;
+			void DownloadSegment() {
+				int iSegment;
+				lock (syncObj) {
+					iSegment = startedSegmentCount++;
+				}
 				long segmentTimestamp = firstTimestamp + (iSegment * timestampStep);
 				JArray segment = (JArray)JObject.Parse(DownloadUrlAsString(MakeUrl(segmentTimestamp)))["data"];
 				lock (syncObj) {
 					segments[iSegment] = segment;
-					downloadedSegmentCount++;
-					progressCallback?.Invoke(downloadedSegmentCount, segmentCount);
+					finishedSegmentCount++;
+					progressCallback?.Invoke(finishedSegmentCount, totalSegmentCount);
 				}
 			}
-			progressCallback?.Invoke(0, segmentCount);
-			Parallel.ForEach(
-				Enumerable.Range(0, segmentCount),
-				new ParallelOptions { MaxDegreeOfParallelism = threadCount },
-				DownloadSegment);
+			progressCallback?.Invoke(0, totalSegmentCount);
+			Enumerable.Repeat(0, totalSegmentCount)
+				.AsParallel()
+				.WithDegreeOfParallelism(threadCount)
+				.ForAll(n => DownloadSegment());
 			JArray combined = new JArray(segments.SelectMany(s => s).ToArray());
 			File.WriteAllText(path, combined.ToString(Formatting.None), new UTF8Encoding(true));
 		}

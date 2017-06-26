@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.1.0.0";
+		public const string Version = "1.1.0.1";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
