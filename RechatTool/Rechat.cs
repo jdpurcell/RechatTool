@@ -14,9 +14,16 @@ using System.Text;
 
 namespace RechatTool {
 	public static class Rechat {
-		public static void DownloadFile(long videoId, string path, bool overwrite = false, Action<int, int> progressCallback = null) {
+		static Rechat() {
+			ServicePointManager.DefaultConnectionLimit = 8;
+			ServicePointManager.SecurityProtocol |=
+				SecurityProtocolType.Tls11 |
+				SecurityProtocolType.Tls12;
+		}
+
+		public static void DownloadFile(long videoId, string path, bool overwrite = false, int? threadCount = null, Action<int, int> progressCallback = null) {
 			const int timestampStep = 30;
-			const int threadCount = 2; // A second thread helps quite a bit; after that the gains are minimal
+			const int defaultThreadCount = 4;
 			if (File.Exists(path) && !overwrite) {
 				throw new Exception("Output file already exists.");
 			}
@@ -49,7 +56,7 @@ namespace RechatTool {
 			progressCallback?.Invoke(0, totalSegmentCount);
 			Enumerable.Repeat(0, totalSegmentCount)
 				.AsParallel()
-				.WithDegreeOfParallelism(threadCount)
+				.WithDegreeOfParallelism(threadCount ?? defaultThreadCount)
 				.ForAll(n => DownloadSegment());
 			JArray combined = new JArray(segments.SelectMany(s => s).ToArray());
 			File.WriteAllText(path, combined.ToString(Formatting.None), new UTF8Encoding(true));
