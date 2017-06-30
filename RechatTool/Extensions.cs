@@ -11,6 +11,10 @@ namespace RechatTool {
 			return String.IsNullOrEmpty(s) ? null : s;
 		}
 
+		public static int? TryParseInt32(this string s) {
+			return Int32.TryParse(s, out int n) ? n : (int?)null;
+		}
+
 		public static long? TryParseInt64(this string s) {
 			return Int64.TryParse(s, out long n) ? n : (long?)null;
 		}

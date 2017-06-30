@@ -34,7 +34,7 @@ namespace RechatTool {
 							overwrite = true;
 						}
 						else if (arg == "-t") {
-							threadCount = Int32.Parse(GetArg());
+							threadCount = GetArg().TryParseInt32() ?? throw new InvalidArgumentException();
 							if (threadCount < 1 || threadCount > 8) {
 								throw new InvalidArgumentException();
 							}
