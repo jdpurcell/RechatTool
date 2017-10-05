@@ -1,5 +1,5 @@
 # RechatTool
-Command line tool to download Twith chat replays. Saves the full JSON data and optionally processes it to produce a simple text file.
+Command line tool to download Twith chat replays. Saves the full JSON data and optionally processes it to produce a simple text file. Requires .NET Framework 4.6+.
 
 Sample usage:
 ```

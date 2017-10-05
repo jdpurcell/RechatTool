@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.2.0.0";
+		public const string Version = "1.3.0.0";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -28,25 +28,18 @@ namespace RechatTool {
 						throw new InvalidArgumentException();
 					string path = PeekArg()?.StartsWith("-") == false ? GetArg() : $"{videoId}.json";
 					bool overwrite = false;
-					int? threadCount = null;
 					while ((arg = GetArg(true)) != null) {
 						if (arg == "-o") {
 							overwrite = true;
-						}
-						else if (arg == "-t") {
-							threadCount = GetArg().TryParseInt32() ?? throw new InvalidArgumentException();
-							if (threadCount < 1 || threadCount > 8) {
-								throw new InvalidArgumentException();
-							}
 						}
 						else {
 							throw new InvalidArgumentException();
 						}
 					}
-					void UpdateProgress(int downloaded, int total) {
-						Console.Write($"\rDownloaded {downloaded} of {total} segments ({(double)downloaded / total * 100.0:0.0}%)");
+					void UpdateProgress(int downloaded) {
+						Console.Write($"\rDownloaded {downloaded} segments");
 					}
-					Rechat.DownloadFile(videoId, path, overwrite, threadCount, UpdateProgress);
+					Rechat.DownloadFile(videoId, path, overwrite, UpdateProgress);
 					if (processFile) {
 						Rechat.ProcessFile(path, overwrite: overwrite);
 					}
@@ -83,11 +76,10 @@ namespace RechatTool {
 				Console.WriteLine($"RechatTool v{new Version(Version).ToDisplayString()}");
 				Console.WriteLine();
 				Console.WriteLine("Modes:");
-				Console.WriteLine("   -d videoid [path] [-o] [-t num]");
+				Console.WriteLine("   -d videoid [path] [-o]");
 				Console.WriteLine("      Downloads chat replay for the specified videoid. If path is not");
 				Console.WriteLine("      specified, output is saved to the current directory. -o overwrites");
-				Console.WriteLine("      existing output file. -t specifies number of download threads (1 to 8),");
-				Console.WriteLine("      otherwise defaults to 4.");
+				Console.WriteLine("      existing output file.");
 				Console.WriteLine("   -D (same parameters as -d)");
 				Console.WriteLine("      Downloads and processes chat replay (combines -d and -p).");
 				Console.WriteLine("   -p path [-o]");
