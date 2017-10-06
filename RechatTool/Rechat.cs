@@ -31,7 +31,7 @@ namespace RechatTool {
 				progressCallback?.Invoke(segments.Count);
 			}
 			while (nextCursor != null);
-			JArray combined = new JArray(segments.SelectMany(s => s).ToArray());
+			JArray combined = new JArray(segments.SelectMany(s => s));
 			File.WriteAllText(path, combined.ToString(Formatting.None), new UTF8Encoding(true));
 		}
 
@@ -51,7 +51,7 @@ namespace RechatTool {
 
 		public static void ProcessFile(string pathIn, string pathOut = null, bool overwrite = false) {
 			if (pathOut == null) {
-				bool isAlreadyTxt = Path.GetExtension(pathIn).Equals(".txt", StringComparison.OrdinalIgnoreCase);
+				bool isAlreadyTxt = pathIn.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
 				pathOut = Path.Combine(
 					Path.GetDirectoryName(pathIn),
 					Path.GetFileNameWithoutExtension(pathIn) + (isAlreadyTxt ? "-p" : "") + ".txt");
