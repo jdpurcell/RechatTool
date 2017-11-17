@@ -49,7 +49,7 @@ namespace RechatTool {
 			request.Headers.Add("Client-ID", "jzkbprff40iqj646a697cyrvl0zt2m6");
 		}
 
-		public static void ProcessFile(string pathIn, string pathOut = null, bool overwrite = false) {
+		public static void ProcessFile(string pathIn, string pathOut = null, bool overwrite = false, bool showBadges = false) {
 			if (pathOut == null) {
 				bool isAlreadyTxt = pathIn.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
 				pathOut = Path.Combine(
@@ -60,7 +60,7 @@ namespace RechatTool {
 				throw new Exception("Output file already exists.");
 			}
 			IEnumerable<string> lines = ParseMessages(pathIn)
-				.Select(ToReadableString)
+				.Select(n => ToReadableString(n, showBadges))
 				.Where(n => n != null);
 			File.WriteAllLines(pathOut, lines, new UTF8Encoding(true));
 		}
@@ -72,8 +72,10 @@ namespace RechatTool {
 				.ToList();
 		}
 
-		private static string ToReadableString(RechatMessage m) {
-			return $"[{m.ContentOffset:hh\\:mm\\:ss\\.fff}] {m.UserName}{(m.IsAction ? "" : ":")} {m.MessageText}";
+		private static string ToReadableString(RechatMessage m, bool showBadges) {
+			string userBadges = $"{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
+			string userName = m.UserDisplayName.Equals(m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
+			return $"[{m.ContentOffset:hh\\:mm\\:ss\\.fff}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
 		}
 
 		public class RechatMessage {
@@ -100,7 +102,19 @@ namespace RechatTool {
 
 			public string MessageText => Message.Body;
 
-			public string UserName => Commenter.DisplayName.NullIfEmpty() ?? Commenter.Name;
+			public string UserName => Commenter.Name;
+
+			public string UserDisplayName => Commenter.DisplayName.TrimEnd(' ');
+
+			public bool UserIsBroadcaster => HasBadge("broadcaster");
+
+			public bool UserIsModerator => HasBadge("moderator");
+
+			public bool UserIsSubscriber => HasBadge("subscriber");
+
+			public IEnumerable<UserBadge> UserBadges => Message.UserBadges?.Select(n => n.ToUserBadge()) ?? Enumerable.Empty<UserBadge>();
+
+			private bool HasBadge(string id) => Message.UserBadges?.Any(n => n.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) ?? false;
 
 			private class JsonComment {
 				[JsonProperty("created_at")]
@@ -127,6 +141,29 @@ namespace RechatTool {
 				public string Body { get; set; }
 				[JsonProperty("is_action")]
 				public bool IsAction { get; set; }
+				[JsonProperty("user_badges")]
+				public JsonCommentUserBadge[] UserBadges { get; set; }
+			}
+
+			private class JsonCommentUserBadge {
+				[JsonProperty("_id")]
+				public string Id { get; set; }
+				[JsonProperty("version")]
+				public int Version { get; set; }
+
+				public UserBadge ToUserBadge() {
+					return new UserBadge {
+						Id = Id,
+						Version = Version
+					};
+				}
+			}
+
+			public class UserBadge {
+				internal UserBadge() { }
+
+				public string Id { get; internal set; }
+				public int Version { get; internal set; }
 			}
 		}
 	}

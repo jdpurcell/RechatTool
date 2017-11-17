@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.3.0.0";
+		public const string Version = "1.4.0.0";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -52,9 +52,13 @@ namespace RechatTool {
 						paths = Directory.GetFiles(Path.GetDirectoryName(paths[0]), Path.GetFileName(paths[0]));
 					}
 					bool overwrite = false;
+					bool showBadges = false;
 					while ((arg = GetArg(true)) != null) {
 						if (arg == "-o") {
 							overwrite = true;
+						}
+						else if (arg == "-b") {
+							showBadges = true;
 						}
 						else {
 							throw new InvalidArgumentException();
@@ -62,7 +66,7 @@ namespace RechatTool {
 					}
 					foreach (string p in paths) {
 						Console.WriteLine("Processing " + Path.GetFileName(p));
-						Rechat.ProcessFile(p, overwrite: overwrite);
+						Rechat.ProcessFile(p, overwrite: overwrite, showBadges: showBadges);
 					}
 					Console.WriteLine("Done!");
 				}
