@@ -19,20 +19,25 @@ namespace RechatTool {
 				throw new Exception("Output file already exists.");
 			}
 			string baseUrl = $"{"https"}://api.twitch.tv/v5/videos/{videoId}/comments";
-			var segments = new List<JArray>();
 			string nextCursor = null;
-			do {
-				string url = nextCursor == null ?
-					$"{baseUrl}?content_offset_seconds=0" :
-					$"{baseUrl}?cursor={nextCursor}";
-				JObject response = JObject.Parse(DownloadUrlAsString(url, withRequest: AddTwitchApiHeaders));
-				segments.Add((JArray)response["comments"]);
-				nextCursor = (string)response["_next"];
-				progressCallback?.Invoke(segments.Count);
+			int segmentCount = 0;
+			using (var writer = new JsonTextWriter(new StreamWriter(path, false, new UTF8Encoding(true)))) {
+				writer.WriteStartArray();
+				do {
+					string url = nextCursor == null ?
+						$"{baseUrl}?content_offset_seconds=0" :
+						$"{baseUrl}?cursor={nextCursor}";
+					JObject response = JObject.Parse(DownloadUrlAsString(url, withRequest: AddTwitchApiHeaders));
+					foreach (JObject comment in (JArray)response["comments"]) {
+						comment.WriteTo(writer);
+					}
+					nextCursor = (string)response["_next"];
+					segmentCount++;
+					progressCallback?.Invoke(segmentCount);
+				}
+				while (nextCursor != null);
+				writer.WriteEndArray();
 			}
-			while (nextCursor != null);
-			JArray combined = new JArray(segments.SelectMany(s => s));
-			File.WriteAllText(path, combined.ToString(Formatting.None), new UTF8Encoding(true));
 		}
 
 		private static string DownloadUrlAsString(string url, Action<HttpWebRequest> withRequest = null) {
@@ -65,11 +70,13 @@ namespace RechatTool {
 			File.WriteAllLines(pathOut, lines, new UTF8Encoding(true));
 		}
 
-		public static List<RechatMessage> ParseMessages(string path) {
-			return JArray.Parse(File.ReadAllText(path))
-				.Cast<JObject>()
-				.Select(n => new RechatMessage(n))
-				.ToList();
+		public static IEnumerable<RechatMessage> ParseMessages(string path) {
+			using (var reader = new JsonTextReader(File.OpenText(path))) {
+				while (reader.Read()) {
+					if (reader.TokenType != JsonToken.StartObject) continue;
+					yield return new RechatMessage(JObject.Load(reader));
+				}
+			}
 		}
 
 		private static string ToReadableString(RechatMessage m, bool showBadges) {

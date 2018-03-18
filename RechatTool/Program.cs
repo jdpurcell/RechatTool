@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.4.0.0";
+		public const string Version = "1.5.0.0";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -26,7 +26,7 @@ namespace RechatTool {
 					long videoId = videoIdStr.TryParseInt64() ??
 						TryParseVideoIdFromUrl(videoIdStr) ??
 						throw new InvalidArgumentException();
-					string path = PeekArg()?.StartsWith("-") == false ? GetArg() : $"{videoId}.json";
+					string path = PeekArg()?.StartsWith("-", StringComparison.Ordinal) == false ? GetArg() : $"{videoId}.json";
 					bool overwrite = false;
 					while ((arg = GetArg(true)) != null) {
 						if (arg == "-o") {
@@ -48,8 +48,12 @@ namespace RechatTool {
 				}
 				else if (arg == "-p") {
 					string[] paths = { GetArg() };
+					string outputPath = null;
 					if (paths[0].IndexOfAny(new[] { '*', '?'}) != -1) {
 						paths = Directory.GetFiles(Path.GetDirectoryName(paths[0]), Path.GetFileName(paths[0]));
+					}
+					else if (PeekArg()?.StartsWith("-", StringComparison.Ordinal) == false) {
+						outputPath = GetArg();
 					}
 					bool overwrite = false;
 					bool showBadges = false;
@@ -66,7 +70,7 @@ namespace RechatTool {
 					}
 					foreach (string p in paths) {
 						Console.WriteLine("Processing " + Path.GetFileName(p));
-						Rechat.ProcessFile(p, overwrite: overwrite, showBadges: showBadges);
+						Rechat.ProcessFile(p, pathOut: outputPath, overwrite: overwrite, showBadges: showBadges);
 					}
 					Console.WriteLine("Done!");
 				}
@@ -80,16 +84,20 @@ namespace RechatTool {
 				Console.WriteLine($"RechatTool v{new Version(Version).ToDisplayString()}");
 				Console.WriteLine();
 				Console.WriteLine("Modes:");
-				Console.WriteLine("   -d videoid [path] [-o]");
-				Console.WriteLine("      Downloads chat replay for the specified videoid. If path is not");
-				Console.WriteLine("      specified, output is saved to the current directory. -o overwrites");
-				Console.WriteLine("      existing output file.");
+				Console.WriteLine("   -d videoid [filename] [-o]");
+				Console.WriteLine("      Downloads chat replay for the specified videoid.");
+				Console.WriteLine("        filename: Output location as relative or absolute filename, otherwise");
+				Console.WriteLine("          defaults to the current directory and named as videoid.json.");
+				Console.WriteLine("        -o: Overwrite the existing output file.");
 				Console.WriteLine("   -D (same parameters as -d)");
 				Console.WriteLine("      Downloads and processes chat replay (combines -d and -p).");
-				Console.WriteLine("   -p path [-o]");
+				Console.WriteLine("   -p filename [output_filename] [-o] [-b]");
 				Console.WriteLine("      Processes a JSON chat replay file and outputs a human-readable text file.");
-				Console.WriteLine("      Output is written to same folder as the input file with the extension");
-				Console.WriteLine("      changed to .txt.");
+				Console.WriteLine("        output_filename: Output location as relative or absolute filename,");
+				Console.WriteLine("            otherwise defaults to the same location as the input file with the");
+				Console.WriteLine("            extension changed to .txt.");
+				Console.WriteLine("        -o: Overwrite the existing output file. ");
+				Console.WriteLine("        -b: Show user badges (e.g. moderator/subscriber).");
 				return 1;
 			}
 			catch (Exception ex) {
