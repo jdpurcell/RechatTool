@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.5.0.0";
+		public const string Version = "1.5.0.1";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -39,11 +39,23 @@ namespace RechatTool {
 					void UpdateProgress(int downloaded) {
 						Console.Write($"\rDownloaded {downloaded} segments");
 					}
-					Rechat.DownloadFile(videoId, path, overwrite, UpdateProgress);
-					if (processFile) {
-						Rechat.ProcessFile(path, overwrite: overwrite);
+					try {
+						Rechat.DownloadFile(videoId, path, overwrite, UpdateProgress);
+						Console.WriteLine();
 					}
-					Console.WriteLine();
+					catch (Rechat.WarningException ex) {
+						Console.WriteLine();
+						Console.WriteLine($"Warning: {ex.Message}");
+					}
+					if (processFile) {
+						try {
+							Console.WriteLine("Processing file");
+							Rechat.ProcessFile(path, overwrite: overwrite);
+						}
+						catch (Rechat.WarningException ex) {
+							Console.WriteLine($"Warning: {ex.Message}");
+						}
+					}
 					Console.WriteLine("Done!");
 				}
 				else if (arg == "-p") {
@@ -69,8 +81,13 @@ namespace RechatTool {
 						}
 					}
 					foreach (string p in paths) {
-						Console.WriteLine("Processing " + Path.GetFileName(p));
-						Rechat.ProcessFile(p, pathOut: outputPath, overwrite: overwrite, showBadges: showBadges);
+						Console.WriteLine($"Processing {Path.GetFileName(p)}");
+						try {
+							Rechat.ProcessFile(p, pathOut: outputPath, overwrite: overwrite, showBadges: showBadges);
+						}
+						catch (Rechat.WarningException ex) {
+							Console.WriteLine($"Warning: {ex.Message}");
+						}
 					}
 					Console.WriteLine("Done!");
 				}

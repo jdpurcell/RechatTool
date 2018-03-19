@@ -21,6 +21,8 @@ namespace RechatTool {
 			string baseUrl = $"{"https"}://api.twitch.tv/v5/videos/{videoId}/comments";
 			string nextCursor = null;
 			int segmentCount = 0;
+			JObject firstComment = null;
+			JObject lastComment = null;
 			using (var writer = new JsonTextWriter(new StreamWriter(path, false, new UTF8Encoding(true)))) {
 				writer.WriteStartArray();
 				do {
@@ -30,6 +32,8 @@ namespace RechatTool {
 					JObject response = JObject.Parse(DownloadUrlAsString(url, withRequest: AddTwitchApiHeaders));
 					foreach (JObject comment in (JArray)response["comments"]) {
 						comment.WriteTo(writer);
+						firstComment = firstComment ?? comment;
+						lastComment = comment;
 					}
 					nextCursor = (string)response["_next"];
 					segmentCount++;
@@ -37,6 +41,17 @@ namespace RechatTool {
 				}
 				while (nextCursor != null);
 				writer.WriteEndArray();
+			}
+			if (firstComment != null) {
+				try {
+					var firstMessage = new RechatMessage(firstComment);
+					var lastMessage = new RechatMessage(lastComment);
+					File.SetCreationTimeUtc(path, firstMessage.CreatedAt - firstMessage.ContentOffset);
+					File.SetLastWriteTime(path, lastMessage.CreatedAt);
+				}
+				catch (Exception ex) {
+					throw new WarningException("Unable to set file created/modified time.", ex);
+				}
 			}
 		}
 
@@ -68,6 +83,13 @@ namespace RechatTool {
 				.Select(n => ToReadableString(n, showBadges))
 				.Where(n => n != null);
 			File.WriteAllLines(pathOut, lines, new UTF8Encoding(true));
+			try {
+				File.SetCreationTimeUtc(pathOut, File.GetCreationTimeUtc(pathIn));
+				File.SetLastWriteTimeUtc(pathOut, File.GetLastWriteTimeUtc(pathIn));
+			}
+			catch (Exception ex) {
+				throw new WarningException("Unable to set file created/modified time.", ex);
+			}
 		}
 
 		public static IEnumerable<RechatMessage> ParseMessages(string path) {
@@ -172,6 +194,10 @@ namespace RechatTool {
 				public string Id { get; internal set; }
 				public int Version { get; internal set; }
 			}
+		}
+
+		public class WarningException : Exception {
+			public WarningException(string message, Exception innerException) : base(message, innerException) { }
 		}
 	}
 }
