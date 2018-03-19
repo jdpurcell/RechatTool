@@ -47,7 +47,7 @@ namespace RechatTool {
 					var firstMessage = new RechatMessage(firstComment);
 					var lastMessage = new RechatMessage(lastComment);
 					File.SetCreationTimeUtc(path, firstMessage.CreatedAt - firstMessage.ContentOffset);
-					File.SetLastWriteTime(path, lastMessage.CreatedAt);
+					File.SetLastWriteTimeUtc(path, lastMessage.CreatedAt);
 				}
 				catch (Exception ex) {
 					throw new WarningException("Unable to set file created/modified time.", ex);
