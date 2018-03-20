@@ -71,7 +71,7 @@ namespace RechatTool {
 
 		private static TimeSpan? TryGetContentOffset(JObject comment) {
 			try {
-				return new RechatMessage(comment).ContentOffset;
+				return comment == null ? (TimeSpan?)null : new RechatMessage(comment).ContentOffset;
 			}
 			catch {
 				return null;
