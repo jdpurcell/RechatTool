@@ -14,7 +14,7 @@ using Newtonsoft.Json.Linq;
 
 namespace RechatTool {
 	public static class Rechat {
-		public static void DownloadFile(long videoId, string path, bool overwrite = false, Action<int> progressCallback = null) {
+		public static void DownloadFile(long videoId, string path, bool overwrite = false, DownloadProgressCallback progressCallback = null) {
 			if (File.Exists(path) && !overwrite) {
 				throw new Exception("Output file already exists.");
 			}
@@ -37,7 +37,7 @@ namespace RechatTool {
 					}
 					nextCursor = (string)response["_next"];
 					segmentCount++;
-					progressCallback?.Invoke(segmentCount);
+					progressCallback?.Invoke(segmentCount, TryGetContentOffset(lastComment));
 				}
 				while (nextCursor != null);
 				writer.WriteEndArray();
@@ -67,6 +67,15 @@ namespace RechatTool {
 		private static void AddTwitchApiHeaders(HttpWebRequest request) {
 			request.Accept = "application/vnd.twitchtv.v5+json";
 			request.Headers.Add("Client-ID", "jzkbprff40iqj646a697cyrvl0zt2m6");
+		}
+
+		private static TimeSpan? TryGetContentOffset(JObject comment) {
+			try {
+				return new RechatMessage(comment).ContentOffset;
+			}
+			catch {
+				return null;
+			}
 		}
 
 		public static void ProcessFile(string pathIn, string pathOut = null, bool overwrite = false, bool showBadges = false) {
@@ -101,10 +110,14 @@ namespace RechatTool {
 			}
 		}
 
+		public static string TimestampToString(TimeSpan value, bool showMilliseconds) {
+			return $"{(int)value.TotalHours:00}:{value:mm}:{value:ss}{(showMilliseconds ? $".{value:fff}" : "")}";
+		}
+
 		private static string ToReadableString(RechatMessage m, bool showBadges) {
 			string userBadges = $"{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
 			string userName = m.UserDisplayName.Equals(m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
-			return $"[{m.ContentOffset:hh\\:mm\\:ss\\.fff}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
+			return $"[{TimestampToString(m.ContentOffset, true)}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
 		}
 
 		public class RechatMessage {
@@ -199,5 +212,7 @@ namespace RechatTool {
 		public class WarningException : Exception {
 			public WarningException(string message, Exception innerException) : base(message, innerException) { }
 		}
+
+		public delegate void DownloadProgressCallback(int segmentCount, TimeSpan? contentOffset);
 	}
 }

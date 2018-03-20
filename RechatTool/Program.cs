@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.5.0.1";
+		public const string Version = "1.5.0.2";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -36,8 +36,12 @@ namespace RechatTool {
 							throw new InvalidArgumentException();
 						}
 					}
-					void UpdateProgress(int downloaded) {
-						Console.Write($"\rDownloaded {downloaded} segments");
+					void UpdateProgress(int segmentCount, TimeSpan? contentOffset) {
+						string message = $"Downloaded {segmentCount} segment{(segmentCount == 1 ? "" : "s")}";
+						if (contentOffset != null) {
+							message += $", offset = {Rechat.TimestampToString(contentOffset.Value, false)}";
+						}
+						Console.Write($"\r{message}");
 					}
 					try {
 						Rechat.DownloadFile(videoId, path, overwrite, UpdateProgress);
