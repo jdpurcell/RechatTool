@@ -115,7 +115,7 @@ namespace RechatTool {
 		}
 
 		private static string ToReadableString(RechatMessage m, bool showBadges) {
-			string userBadges = $"{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
+			string userBadges = $"{(m.UserIsAdmin ? "*" : "")}{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
 			string userName = m.UserDisplayName.Equals(m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
 			return $"[{TimestampToString(m.ContentOffset, true)}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
 		}
@@ -147,6 +147,8 @@ namespace RechatTool {
 			public string UserName => Commenter.Name;
 
 			public string UserDisplayName => Commenter.DisplayName.TrimEnd(' ');
+
+			public bool UserIsAdmin => HasBadge("admin");
 
 			public bool UserIsBroadcaster => HasBadge("broadcaster");
 
