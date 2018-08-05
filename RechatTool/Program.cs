@@ -6,10 +6,11 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.5.0.3";
+		public const string Version = "1.5.0.4";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -134,8 +135,9 @@ namespace RechatTool {
 			}
 			if (!Uri.TryCreate(s, UriKind.Absolute, out Uri uri)) return null;
 			if (!hosts.Any(h => uri.Host.Equals(h, StringComparison.OrdinalIgnoreCase))) return null;
-			if (!uri.AbsolutePath.StartsWith("/videos/", StringComparison.Ordinal)) return null;
-			return uri.AbsolutePath.Substring(8).TryParseInt64();
+			Match match = Regex.Match(uri.AbsolutePath, "^/(videos|[^/]+/video)/(?<videoId>[0-9]+)$");
+			if (!match.Success) return null;
+			return match.Groups["videoId"].Value.TryParseInt64();
 		}
 
 		private class InvalidArgumentException : Exception { }
