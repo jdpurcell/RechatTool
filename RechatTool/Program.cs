@@ -4,13 +4,14 @@
 // Licensed under the MIT License (see LICENSE.txt)
 // --------------------------------------------------------------------------------
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.5.0.4";
+		public const string Version = "1.5.0.5";
 
 		private static int Main(string[] args) {
 			int iArg = 0;
@@ -48,7 +49,7 @@ namespace RechatTool {
 						Rechat.DownloadFile(videoId, path, overwrite, UpdateProgress);
 						Console.WriteLine();
 					}
-					catch (Rechat.WarningException ex) {
+					catch (WarningException ex) {
 						Console.WriteLine();
 						Console.WriteLine($"Warning: {ex.Message}");
 					}
@@ -57,7 +58,7 @@ namespace RechatTool {
 							Console.WriteLine("Processing file");
 							Rechat.ProcessFile(path, overwrite: overwrite);
 						}
-						catch (Rechat.WarningException ex) {
+						catch (WarningException ex) {
 							Console.WriteLine($"Warning: {ex.Message}");
 						}
 					}
@@ -90,7 +91,7 @@ namespace RechatTool {
 						try {
 							Rechat.ProcessFile(p, pathOut: outputPath, overwrite: overwrite, showBadges: showBadges);
 						}
-						catch (Rechat.WarningException ex) {
+						catch (WarningException ex) {
 							Console.WriteLine($"Warning: {ex.Message}");
 						}
 					}

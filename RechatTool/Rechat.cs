@@ -5,6 +5,7 @@
 // --------------------------------------------------------------------------------
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -115,7 +116,7 @@ namespace RechatTool {
 		}
 
 		private static string ToReadableString(RechatMessage m, bool showBadges) {
-			string userBadges = $"{(m.UserIsAdmin ? "*" : "")}{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
+			string userBadges = $"{(m.UserIsAdmin || m.UserIsStaff ? "*" : "")}{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator || m.UserIsGlobalModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
 			string userName = m.UserDisplayName.Equals(m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
 			return $"[{TimestampToString(m.ContentOffset, true)}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
 		}
@@ -149,6 +150,10 @@ namespace RechatTool {
 			public string UserDisplayName => Commenter.DisplayName.TrimEnd(' ');
 
 			public bool UserIsAdmin => HasBadge("admin");
+
+			public bool UserIsStaff => HasBadge("staff");
+
+			public bool UserIsGlobalModerator => HasBadge("global_mod");
 
 			public bool UserIsBroadcaster => HasBadge("broadcaster");
 
@@ -209,10 +214,6 @@ namespace RechatTool {
 				public string Id { get; internal set; }
 				public int Version { get; internal set; }
 			}
-		}
-
-		public class WarningException : Exception {
-			public WarningException(string message, Exception innerException) : base(message, innerException) { }
 		}
 
 		public delegate void DownloadProgressCallback(int segmentCount, TimeSpan? contentOffset);
