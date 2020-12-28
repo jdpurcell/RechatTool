@@ -33,7 +33,7 @@ namespace RechatTool {
 					JObject response = JObject.Parse(DownloadUrlAsString(url, withRequest: AddTwitchApiHeaders));
 					foreach (JObject comment in (JArray)response["comments"]) {
 						comment.WriteTo(writer);
-						firstComment = firstComment ?? comment;
+						firstComment ??= comment;
 						lastComment = comment;
 					}
 					nextCursor = (string)response["_next"];
@@ -80,6 +80,9 @@ namespace RechatTool {
 		}
 
 		public static void ProcessFile(string pathIn, string pathOut = null, bool overwrite = false, bool showBadges = false) {
+			if (!File.Exists(pathIn)) {
+				throw new Exception("Input file does not exist.");
+			}
 			if (pathOut == null) {
 				bool isAlreadyTxt = pathIn.EndsWith(".txt", StringComparison.OrdinalIgnoreCase);
 				pathOut = Path.Combine(
@@ -198,7 +201,7 @@ namespace RechatTool {
 				[JsonProperty("_id")]
 				public string Id { get; set; }
 				[JsonProperty("version")]
-				public int Version { get; set; }
+				public string Version { get; set; }
 
 				public UserBadge ToUserBadge() {
 					return new UserBadge {
@@ -212,7 +215,7 @@ namespace RechatTool {
 				internal UserBadge() { }
 
 				public string Id { get; internal set; }
-				public int Version { get; internal set; }
+				public string Version { get; internal set; }
 			}
 		}
 
