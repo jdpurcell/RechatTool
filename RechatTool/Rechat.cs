@@ -24,7 +24,9 @@ namespace RechatTool {
 			int segmentCount = 0;
 			JObject firstComment = null;
 			JObject lastComment = null;
-			using (var writer = new JsonTextWriter(new StreamWriter(path, false, new UTF8Encoding(true)))) {
+			bool finishedDownload = false;
+			try {
+				using var writer = new JsonTextWriter(new StreamWriter(path, false, new UTF8Encoding(true)));
 				writer.WriteStartArray();
 				do {
 					string url = nextCursor == null ?
@@ -42,6 +44,15 @@ namespace RechatTool {
 				}
 				while (nextCursor != null);
 				writer.WriteEndArray();
+				finishedDownload = true;
+			}
+			finally {
+				if (!finishedDownload) {
+					try {
+						File.Delete(path);
+					}
+					catch { }
+				}
 			}
 			if (firstComment != null) {
 				try {
@@ -120,7 +131,7 @@ namespace RechatTool {
 
 		private static string ToReadableString(RechatMessage m, bool showBadges) {
 			string userBadges = $"{(m.UserIsAdmin || m.UserIsStaff ? "*" : "")}{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator || m.UserIsGlobalModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
-			string userName = m.UserDisplayName.Equals(m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
+			string userName = m.UserName == null ? "???" : String.Equals(m.UserDisplayName, m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
 			return $"[{TimestampToString(m.ContentOffset, true)}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
 		}
 
@@ -148,9 +159,9 @@ namespace RechatTool {
 
 			public string MessageText => Message.Body;
 
-			public string UserName => Commenter.Name;
+			public string UserName => Commenter?.Name;
 
-			public string UserDisplayName => Commenter.DisplayName.TrimEnd(' ');
+			public string UserDisplayName => Commenter?.DisplayName.TrimEnd(' ');
 
 			public bool UserIsAdmin => HasBadge("admin");
 
