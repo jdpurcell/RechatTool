@@ -18,7 +18,7 @@ namespace RechatTool {
 			string PeekArg() =>
 				iArg < args.Length ? args[iArg] : null;
 			string GetArg(bool optional = false) =>
-				iArg < args.Length ? args[iArg++] : optional ? (string)null : throw new InvalidArgumentException();
+				iArg < args.Length ? args[iArg++] : optional ? null : throw new InvalidArgumentException();
 
 			try {
 				string arg = GetArg();

@@ -19,7 +19,7 @@ namespace RechatTool {
 			if (File.Exists(path) && !overwrite) {
 				throw new Exception("Output file already exists.");
 			}
-			string baseUrl = $"{"https"}://api.twitch.tv/v5/videos/{videoId}/comments";
+			string baseUrl = $"https://api.twitch.tv/v5/videos/{videoId}/comments";
 			string nextCursor = null;
 			int segmentCount = 0;
 			JObject firstComment = null;
@@ -83,7 +83,7 @@ namespace RechatTool {
 
 		private static TimeSpan? TryGetContentOffset(JObject comment) {
 			try {
-				return comment == null ? (TimeSpan?)null : new RechatMessage(comment).ContentOffset;
+				return comment == null ? null : new RechatMessage(comment).ContentOffset;
 			}
 			catch {
 				return null;
