@@ -8,10 +8,15 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
+#if NETFRAMEWORK
+using System.Net;
+#else
+using System.Net.Http;
+#endif
 
 namespace RechatTool {
 	public static class Rechat {
@@ -26,7 +31,7 @@ namespace RechatTool {
 			JObject lastComment = null;
 			bool finishedDownload = false;
 			try {
-				using var writer = new JsonTextWriter(new StreamWriter(path, false, new UTF8Encoding(true)));
+				using JsonTextWriter writer = new(new StreamWriter(path, false, new UTF8Encoding(true)));
 				writer.WriteStartArray();
 				do {
 					string url = nextCursor == null ?
@@ -56,8 +61,8 @@ namespace RechatTool {
 			}
 			if (firstComment != null) {
 				try {
-					var firstMessage = new RechatMessage(firstComment);
-					var lastMessage = new RechatMessage(lastComment);
+					RechatMessage firstMessage = new(firstComment);
+					RechatMessage lastMessage = new(lastComment);
 					File.SetCreationTimeUtc(path, firstMessage.CreatedAt - firstMessage.ContentOffset);
 					File.SetLastWriteTimeUtc(path, lastMessage.CreatedAt);
 				}
@@ -67,19 +72,34 @@ namespace RechatTool {
 			}
 		}
 
+#if NETFRAMEWORK
 		private static string DownloadUrlAsString(string url, Action<HttpWebRequest> withRequest = null) {
 			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
 			withRequest?.Invoke(request);
-			using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-			using (StreamReader responseStream = new StreamReader(response.GetResponseStream())) {
-				return responseStream.ReadToEnd();
-			}
+			using HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+			using StreamReader responseStream = new(response.GetResponseStream());
+			return responseStream.ReadToEnd();
 		}
 
 		private static void AddTwitchApiHeaders(HttpWebRequest request) {
 			request.Accept = "application/vnd.twitchtv.v5+json";
 			request.Headers.Add("Client-ID", "jzkbprff40iqj646a697cyrvl0zt2m6");
 		}
+#else
+		private static string DownloadUrlAsString(string url, Action<HttpRequestMessage> withRequest = null) {
+			using HttpClient client = new();
+			using HttpRequestMessage request = new(HttpMethod.Get, url);
+			withRequest?.Invoke(request);
+			using HttpResponseMessage response = client.Send(request);
+			using StreamReader responseStream = new(response.Content.ReadAsStream());
+			return responseStream.ReadToEnd();
+		}
+
+		private static void AddTwitchApiHeaders(HttpRequestMessage request) {
+			request.Headers.Add("Accept", "application/vnd.twitchtv.v5+json");
+			request.Headers.Add("Client-ID", "jzkbprff40iqj646a697cyrvl0zt2m6");
+		}
+#endif
 
 		private static TimeSpan? TryGetContentOffset(JObject comment) {
 			try {
@@ -117,11 +137,10 @@ namespace RechatTool {
 		}
 
 		public static IEnumerable<RechatMessage> ParseMessages(string path) {
-			using (var reader = new JsonTextReader(File.OpenText(path))) {
-				while (reader.Read()) {
-					if (reader.TokenType != JsonToken.StartObject) continue;
-					yield return new RechatMessage(JObject.Load(reader));
-				}
+			using JsonTextReader reader = new(File.OpenText(path));
+			while (reader.Read()) {
+				if (reader.TokenType != JsonToken.StartObject) continue;
+				yield return new RechatMessage(JObject.Load(reader));
 			}
 		}
 
@@ -149,7 +168,7 @@ namespace RechatTool {
 
 			public DateTime CreatedAt => Comment.CreatedAt;
 
-			public TimeSpan ContentOffset => TimeSpan.FromSeconds(Comment.ContentOffsetSeconds);
+			public TimeSpan ContentOffset => new TimeSpan((long)Math.Round(Comment.ContentOffsetSeconds * 1000.0) * TimeSpan.TicksPerMillisecond);
 
 			// User said something with "/me"
 			public bool IsAction => Message.IsAction;
