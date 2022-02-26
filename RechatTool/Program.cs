@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 namespace RechatTool {
 	internal class Program {
-		public const string Version = "1.5.0.7";
+		public const string Version = "1.6.0.0";
 
 		private static int Main(string[] args) {
 			int iArg = 0;

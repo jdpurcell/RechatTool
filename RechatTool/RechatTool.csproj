@@ -12,4 +12,21 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <PropertyGroup>
+      <PackageDir>$(TargetDir)Package\</PackageDir>
+      <PackageZip>$(TargetDir)Package.zip</PackageZip>
+    </PropertyGroup>
+    <ItemGroup>
+      <PackageContents Include="$(TargetDir)*.exe" />
+      <PackageContents Include="$(TargetDir)*.dll" />
+      <PackageContents Include="$(TargetDir)*.exe.config" />
+      <PackageContents Include="$(TargetDir)*.runtimeconfig.json" />
+      <PackageContents Include="$(SolutionDir)LICENSE.txt" />
+    </ItemGroup>
+    <RemoveDir Directories="$(PackageDir)" />
+    <Copy SourceFiles="@(PackageContents)" DestinationFolder="$(PackageDir)" />
+    <Delete Files="$(PackageZip)" />
+    <ZipDirectory SourceDirectory="$(PackageDir)" DestinationFile="$(PackageZip)" />
+  </Target>
 </Project>

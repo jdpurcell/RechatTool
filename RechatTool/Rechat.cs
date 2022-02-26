@@ -12,12 +12,6 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-#if NETFRAMEWORK
-using System.Net;
-#else
-using System.Net.Http;
-#endif
-
 namespace RechatTool {
 	public static class Rechat {
 		public static void DownloadFile(long videoId, string path, bool overwrite = false, DownloadProgressCallback progressCallback = null) {
@@ -31,13 +25,14 @@ namespace RechatTool {
 			JObject lastComment = null;
 			bool finishedDownload = false;
 			try {
+				using TwitchApi5Client apiClient = new();
 				using JsonTextWriter writer = new(new StreamWriter(path, false, new UTF8Encoding(true)));
 				writer.WriteStartArray();
 				do {
 					string url = nextCursor == null ?
 						$"{baseUrl}?content_offset_seconds=0" :
 						$"{baseUrl}?cursor={nextCursor}";
-					JObject response = JObject.Parse(DownloadUrlAsString(url, withRequest: AddTwitchApiHeaders));
+					JObject response = JObject.Parse(apiClient.Request(url));
 					foreach (JObject comment in (JArray)response["comments"]) {
 						comment.WriteTo(writer);
 						firstComment ??= comment;
@@ -71,35 +66,6 @@ namespace RechatTool {
 				}
 			}
 		}
-
-#if NETFRAMEWORK
-		private static string DownloadUrlAsString(string url, Action<HttpWebRequest> withRequest = null) {
-			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-			withRequest?.Invoke(request);
-			using HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-			using StreamReader responseStream = new(response.GetResponseStream());
-			return responseStream.ReadToEnd();
-		}
-
-		private static void AddTwitchApiHeaders(HttpWebRequest request) {
-			request.Accept = "application/vnd.twitchtv.v5+json";
-			request.Headers.Add("Client-ID", "jzkbprff40iqj646a697cyrvl0zt2m6");
-		}
-#else
-		private static string DownloadUrlAsString(string url, Action<HttpRequestMessage> withRequest = null) {
-			using HttpClient client = new();
-			using HttpRequestMessage request = new(HttpMethod.Get, url);
-			withRequest?.Invoke(request);
-			using HttpResponseMessage response = client.Send(request);
-			using StreamReader responseStream = new(response.Content.ReadAsStream());
-			return responseStream.ReadToEnd();
-		}
-
-		private static void AddTwitchApiHeaders(HttpRequestMessage request) {
-			request.Headers.Add("Accept", "application/vnd.twitchtv.v5+json");
-			request.Headers.Add("Client-ID", "jzkbprff40iqj646a697cyrvl0zt2m6");
-		}
-#endif
 
 		private static TimeSpan? TryGetContentOffset(JObject comment) {
 			try {
