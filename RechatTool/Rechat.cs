@@ -19,31 +19,39 @@ public static class Rechat {
 		if (File.Exists(path) && !overwrite) {
 			throw new Exception("Output file already exists.");
 		}
-		string baseUrl = $"https://api.twitch.tv/v5/videos/{videoId}/comments";
+		const string baseQuery = """[{"operationName":"VideoCommentsByOffsetOrCursor","variables":{},"extensions":{"persistedQuery":{"version":1,"sha256Hash":"b70a3591ff0f4e0313d126c6a1502d79a1c02baebb288227c582044aa76adf6a"}}}]""";
 		string nextCursor = null;
 		int segmentCount = 0;
 		JObject firstComment = null;
 		JObject lastComment = null;
 		bool finishedDownload = false;
 		try {
-			using TwitchApi5Client apiClient = new();
+			using TwitchApiClient apiClient = new();
 			using JsonTextWriter writer = new(new StreamWriter(path, false, new UTF8Encoding(true)));
 			writer.WriteStartArray();
 			do {
-				string url = nextCursor == null ?
-					$"{baseUrl}?content_offset_seconds=0" :
-					$"{baseUrl}?cursor={nextCursor}";
-				JObject response = JObject.Parse(apiClient.Request(url));
-				foreach (JObject comment in (JArray)response["comments"]) {
+				List<string> queryVariables = new() {
+					$"\"videoID\":\"{videoId}\"",
+					nextCursor == null ?
+						"\"contentOffsetSeconds\":0" :
+						$"\"cursor\":\"{nextCursor}\""
+				};
+				JArray response = JArray.Parse(apiClient.Request(
+					"https://gql.twitch.tv/gql",
+					baseQuery.Replace("\"variables\":{}", $"\"variables\":{{{queryVariables.StringJoin(",")}}}")
+				));
+				nextCursor = null;
+				foreach (JObject commentEdge in (JArray)response[0]["data"]["video"]["comments"]["edges"]) {
+					JObject comment = (JObject)commentEdge["node"];
 					comment.WriteTo(writer);
 					firstComment ??= comment;
 					lastComment = comment;
+					nextCursor = (string)commentEdge["cursor"];
 				}
-				nextCursor = (string)response["_next"];
 				segmentCount++;
 				progressCallback?.Invoke(segmentCount, TryGetContentOffset(lastComment));
 			}
-			while (nextCursor != null);
+			while (!String.IsNullOrEmpty(nextCursor));
 			writer.WriteEndArray();
 			finishedDownload = true;
 		}
@@ -111,14 +119,14 @@ public static class Rechat {
 		}
 	}
 
-	public static string TimestampToString(TimeSpan value, bool showMilliseconds) {
-		return $"{(int)value.TotalHours:00}:{value:mm}:{value:ss}{(showMilliseconds ? $".{value:fff}" : "")}";
+	public static string TimestampToString(TimeSpan value) {
+		return $"{(int)value.TotalHours:00}:{value:mm}:{value:ss}";
 	}
 
 	private static string ToReadableString(RechatMessage m, bool showBadges) {
 		string userBadges = $"{(m.UserIsAdmin || m.UserIsStaff ? "*" : "")}{(m.UserIsBroadcaster ? "#" : "")}{(m.UserIsModerator || m.UserIsGlobalModerator ? "@" : "")}{(m.UserIsSubscriber ? "+" : "")}";
-		string userName = m.UserName == null ? "???" : String.Equals(m.UserDisplayName, m.UserName, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserName})";
-		return $"[{TimestampToString(m.ContentOffset, true)}] {(showBadges ? userBadges : "")}{userName}{(m.IsAction ? "" : ":")} {m.MessageText}";
+		string userName = m.UserLogin == null ? "???" : String.Equals(m.UserDisplayName, m.UserLogin, StringComparison.OrdinalIgnoreCase) ? m.UserDisplayName : $"{m.UserDisplayName} ({m.UserLogin})";
+		return $"[{TimestampToString(m.ContentOffset)}] {(showBadges ? userBadges : "")}{userName}: {m.MessageText}";
 	}
 
 	public class RechatMessage {
@@ -137,15 +145,9 @@ public static class Rechat {
 
 		public TimeSpan ContentOffset => new TimeSpan((long)Math.Round(Comment.ContentOffsetSeconds * 1000.0) * TimeSpan.TicksPerMillisecond);
 
-		// User said something with "/me"
-		public bool IsAction => Message.IsAction;
+		public string MessageText => (Message.Fragments?.Select(f => f.Text) ?? Enumerable.Empty<string>()).StringJoin("");
 
-		// Not from the live chat (i.e. user posted a comment on the VOD)
-		public bool IsNonChat => !Comment.Source.Equals("chat", StringComparison.OrdinalIgnoreCase);
-
-		public string MessageText => Message.Body;
-
-		public string UserName => Commenter?.Name;
+		public string UserLogin => Commenter?.Login;
 
 		public string UserDisplayName => Commenter?.DisplayName.TrimEnd(' ');
 
@@ -163,15 +165,13 @@ public static class Rechat {
 
 		public IEnumerable<UserBadge> UserBadges => Message.UserBadges?.Select(n => n.ToUserBadge()) ?? Enumerable.Empty<UserBadge>();
 
-		private bool HasBadge(string id) => Message.UserBadges?.Any(n => n.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) ?? false;
+		private bool HasBadge(string id) => Message.UserBadges?.Any(n => n.SetId.Equals(id, StringComparison.OrdinalIgnoreCase)) ?? false;
 
 		private class JsonComment {
-			[JsonProperty("created_at")]
+			[JsonProperty("createdAt")]
 			public DateTime CreatedAt { get; set; }
-			[JsonProperty("content_offset_seconds")]
+			[JsonProperty("contentOffsetSeconds")]
 			public double ContentOffsetSeconds { get; set; }
-			[JsonProperty("source")]
-			public string Source { get; set; }
 			[JsonProperty("commenter")]
 			public JsonCommentCommenter Commenter { get; set; }
 			[JsonProperty("message")]
@@ -179,30 +179,33 @@ public static class Rechat {
 		}
 
 		private class JsonCommentCommenter {
-			[JsonProperty("display_name")]
+			[JsonProperty("displayName")]
 			public string DisplayName { get; set; }
-			[JsonProperty("name")]
-			public string Name { get; set; }
+			[JsonProperty("login")]
+			public string Login { get; set; }
 		}
 
 		private class JsonCommentMessage {
-			[JsonProperty("body")]
-			public string Body { get; set; }
-			[JsonProperty("is_action")]
-			public bool IsAction { get; set; }
-			[JsonProperty("user_badges")]
+			[JsonProperty("fragments")]
+			public JsonCommentFragment[] Fragments { get; set; }
+			[JsonProperty("userBadges")]
 			public JsonCommentUserBadge[] UserBadges { get; set; }
 		}
 
+		private class JsonCommentFragment {
+			[JsonProperty("text")]
+			public string Text { get; set; }
+		}
+
 		private class JsonCommentUserBadge {
-			[JsonProperty("_id")]
-			public string Id { get; set; }
+			[JsonProperty("setID")]
+			public string SetId { get; set; }
 			[JsonProperty("version")]
 			public string Version { get; set; }
 
 			public UserBadge ToUserBadge() {
 				return new UserBadge {
-					Id = Id,
+					SetId = SetId,
 					Version = Version
 				};
 			}
@@ -211,7 +214,7 @@ public static class Rechat {
 		public class UserBadge {
 			internal UserBadge() { }
 
-			public string Id { get; internal set; }
+			public string SetId { get; internal set; }
 			public string Version { get; internal set; }
 		}
 	}

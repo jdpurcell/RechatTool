@@ -12,7 +12,7 @@ using System.Text.RegularExpressions;
 namespace RechatTool;
 
 internal class Program {
-	public const string Version = "1.6.0.0";
+	public const string Version = "2.0.0.0";
 
 	private static int Main(string[] args) {
 		int iArg = 0;
@@ -42,7 +42,7 @@ internal class Program {
 				void UpdateProgress(int segmentCount, TimeSpan? contentOffset) {
 					string message = $"Downloaded {segmentCount} segment{(segmentCount == 1 ? "" : "s")}";
 					if (contentOffset != null) {
-						message += $", offset = {Rechat.TimestampToString(contentOffset.Value, false)}";
+						message += $", offset = {Rechat.TimestampToString(contentOffset.Value)}";
 					}
 					Console.Write($"\r{message}");
 				}
