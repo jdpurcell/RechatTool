@@ -13,7 +13,7 @@ internal class TwitchApiClient : IDisposable {
 
 	public string Request(string url, string content) {
 		using HttpRequestMessage request = new(HttpMethod.Post, url);
-		request.Headers.Add("Client-ID", "kimne78kx3ncx6brgo4mv6wki5h1ko");
+		request.Headers.Add("Client-ID", "kd1unb4b3q4t58fwlpcbzcbnm76a8fp");
 		request.Content = new StringContent(content);
 		using HttpResponseMessage response =
 #if NETFRAMEWORK
