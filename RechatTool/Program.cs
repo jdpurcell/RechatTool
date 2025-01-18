@@ -12,7 +12,7 @@ using System.Text.RegularExpressions;
 namespace RechatTool;
 
 internal class Program {
-	public const string Version = "2.1.0.0";
+	public const string Version = "2.2.0.0";
 
 	private static int Main(string[] args) {
 		int iArg = 0;
