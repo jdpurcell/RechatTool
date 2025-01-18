@@ -27,7 +27,7 @@ public static class Rechat {
 		bool finishedDownload = false;
 		try {
 			using TwitchApiClient apiClient = new();
-			using JsonTextWriter writer = new(new StreamWriter(path, false, new UTF8Encoding(true)));
+			using JsonTextWriter writer = new(new StreamWriter(path, false));
 			writer.WriteStartArray();
 			do {
 				List<string> queryVariables = new() {
